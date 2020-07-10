@@ -30,7 +30,7 @@ def main():
         dealer = BlackJackDealer(deck)
         #print(deck.deck)
         #ベット
-        print('Bankroll: ', player.bankroll)
+        print('Bankroll:', player.bankroll)
         player.bet_con()
         #カードを２枚配る
         player.hand += [deck.draw(), deck.draw()]
