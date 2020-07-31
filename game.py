@@ -1,14 +1,35 @@
-# Deck 用ライブラリ
+# coding: utf-8
 import numpy as np
 import random
+
+import readchar
 
 class Player:
     def __init__(self):
         self.bankroll = 1000# 適当、最終的にアカウントと紐づけると面白いかも todo
         self.hand = []
-    def get_card(self, card, hand_index=0):
-        # 引数(カード)を hand に加える = hit メソッドに相当
-        pass
+    def key_input(self, hand_num, h_flag=True, d_flag=True, u_flag=True):
+        # キーボード入力を受け付ける関数．CLI デバッグ用．
+        # キー入力に対してアクションを決定する
+        key = ord(readchar.readchar())
+        if key == 115:
+            # stand / stay
+            pass
+        elif key == 104 and h_flag:
+            # hit
+            self.hand[hand_num].append(deck.draw())
+            # 一度ヒットした場合．次はヒットかスタンドのみ
+            d = {"h_flag": True, "d_flag": False, "u_flag": False}
+            self.key_input(hand_num, **d)
+        elif key == 100 and d_flag:
+            # double
+            print("double")
+            # ダブルダウンした場合．次はヒットかスタンドのみ
+            d = {"h_flag": True, "d_flag": False, "u_flag": False}
+            self.key_input(hand_num, **d)
+        elif key == 117 and u_flag:
+            # surrender
+            pass
     def bet(self):
         bet_amount = 100# 適当、最終的に各プレイヤーが自由に入力できるようにする。
         self.bankroll -= bet_amount
@@ -74,8 +95,7 @@ def calc_hand(hand_array):
             score += 10
         elif num in [1]:
             ace_count += 1
-        else:
-            pass
+    # A の補正計算
     for i in range(ace_count):
         if score + 11 > 21:
             score += 1
@@ -89,7 +109,9 @@ if __name__ == "__main__":
     players_bet_amount = []# プレイヤーインスタンスに紐づく bet 額のリスト
     # - 各インスタンス生成
     mizuki = Player()# ゲームの参加人数に応じて生成。todo
+    # yokosawa = Player()
     players.append(mizuki)
+    # players.append(yokosawa)
     dealer = Dealer()
     deck = Deck(3)
     # - プレイヤーにカードを配る ***
@@ -112,6 +134,15 @@ if __name__ == "__main__":
         players_bet_amount.append(players[i].bet())
     # - プレイヤーのアクション ***
     for p in players:
-        pass
+        # スプリットできるかどうか決定する
+        if p.hand[0][0] % 100 == p.hand[0][1] % 100:
+            # ord("y") = 121, ord("n") = 110
+            print("split? - y/n")
+            split_key = ord(readchar.readchar())
+            if split_key == 121:
+                p.hand.append([p.hand[0].pop(0)])
+        # どのハンド(スプリット時)に対するアクションか決めるのが hand_num
+        for hand_num in range(len(p.hand)):
+            p.key_input(hand_num)
     # - ディーラーのアクション
     # - 清算

@@ -1,13 +1,15 @@
-import numpy as np
+# coding: utf-8
 
-hand1 = [1, 2, 3, 4]
-hand2 = [2, 3, 4, 5]
+class testclass():
+    def __init__(self):
+        self.var = "init"
+    def func(self, var):
+        print(var)
 
-hand = []
-hand.append(hand1)
-hand.append(hand2)
-print(hand)
-print(hand[0])
+def aaa():
+    a.func("eee")
 
-hand[0].remove(1)
-print(hand)
+if __name__ == "__main__":
+    import readchar
+    a = readchar.readchar()
+    print(ord(a))
