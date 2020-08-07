@@ -74,4 +74,4 @@
         - insurance, surrender の実装
         - ディーラーのアクション以降の実装
 
-てすとss2
+てすとss23
