@@ -151,7 +151,7 @@ def calc_hand(hand_array):
         score = 0
     return score
 
-if __name__ == "__main__":
+def section1():
     # リスト初期化
     players = []# プレイヤーインスタンスのリスト
     # - 各インスタンス生成
@@ -161,9 +161,8 @@ if __name__ == "__main__":
     # players.append(yokosawa)
     dealer = Dealer()
     deck = Deck(3)
-    # - プレイヤーのベット金額を決定する ***
-    for p in players:
-        p.bet()
+
+def section2():
     # - プレイヤーにカードを配る ***
     for p in players:
         p.hand.append([deck.draw()])
@@ -179,6 +178,17 @@ if __name__ == "__main__":
     # - ディーラーにカードを配る
     dealer.hand.append(deck.draw())
     dealer.hand.append(deck.draw())
+    #     - 内一枚は伏せる
+    print("dealer hand")
+
+if __name__ == "__main__":
+    # *+*+*+*+*+*+*+*+*+*+*+* セクション *+*+*+*+*+*+*+*+*+*+*+*
+    section1()
+    # - プレイヤーのベット金額を決定する *** 入力
+    for p in players:
+        p.bet()
+    # *+*+*+*+*+*+*+*+*+*+*+* セクション *+*+*+*+*+*+*+*+*+*+*+*
+    section2()
     #     - 内一枚は伏せる
     #     - A の場合、インシュランス選択 ***
     if dealer.hand[0] % 100 == 1:
