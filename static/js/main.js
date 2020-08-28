@@ -19,6 +19,11 @@ function send_message() {
     connection.send(msg.value);
 }
 
+function game_exit() {
+    // ゲーム終了
+    connection.close()
+}
+
 function hit() {
     // hit ボタンが押されたとき，サーバー側に 「hit」 とプリントする．
     // TODO: hit という文字列をサーバに渡すのか，hit に相当する データ(0とか1とか)を送るのか．
