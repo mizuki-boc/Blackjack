@@ -182,115 +182,117 @@ def pipe():
             # print("message 受信後")
             # print(message)
             # ws.send("test message")
-            # *+*+*+*+*+*+*+*+**+* ここから game.py の内容 *+*+*+*+*+*+*+*+**+*
-            # リスト初期化
-            players = []# プレイヤーインスタンスのリスト
-            # - 各インスタンス生成
-            mizuki = Player("mizuki")# ゲームの参加人数に応じて生成。todo
-            players.append(mizuki)
-            # yokosawa = Player("yokosawa")
-            # players.append(yokosawa)
-            dealer = Dealer()
-            deck = Deck(3)
-            # - プレイヤーのベット金額を決定する ***
-            for p in players:
-                p.bet()
-            # - プレイヤーにカードを配る ***
-            for p in players:
-                p.hand.append([deck.draw()])
-            for p in players:
-                p.hand[0].append(deck.draw())
-            # ブラックジャックかチェック
-            for p in players:
-                if calc_hand(p.hand[0]) == 21:
-                    print(p.name, "s blackjack!")
-                    p.is_blackjack = True
-                else:
-                    p.is_blackjack = False
-            # - ディーラーにカードを配る
-            dealer.hand.append(deck.draw())
-            dealer.hand.append(deck.draw())
-            #     - 内一枚は伏せる
-            #     - A の場合、インシュランス選択 ***
-            if dealer.hand[0] % 100 == 1:
-                for p in players:
-                    p.insurance()
-            if calc_hand(dealer.hand) == 21:
-                # ディーラーがブラックジャックだった場合．
-                dealer.is_blackjack = True
-            else:
-                # - ディーラーがブラックジャックでなかった場合．
-                dealer.is_blackjack = False
-                # - プレイヤーのアクション ***
-                for p in players:
-                    # プレイヤーが natural 21 でないときのみアクション
-                    if not p.is_blackjack:
-                        # スプリットできるかどうか決定する
-                        if p.hand[0][0] % 100 == p.hand[0][1] % 100:
-                            # ord("y") = 121, ord("n") = 110
-                            print("split? - y/n")
-                            split_key = ord(readchar.readchar())
-                            if split_key == 121:
-                                # yes
-                                p.hand.append([p.hand[0].pop(0)])
-                                p.bet_amount.append(p.original_bet)
-                    # どのハンド(スプリット時)に対するアクションか決めるのが hand_num
-                    for hand_num in range(len(p.hand)):
-                        p.key_input(hand_num)
-                # - ディーラーのアクション
-                dealer.action()
-            print("dealer hand", dealer.hand)
-            for p in players:
-                print(p.name, p.hand)
-            # - 勝敗，インシュランス，サレンダー，ブラックジャック の判断
-            if dealer.is_blackjack:
-                # ディーラーが　BJ だった場合．
-                # この場合，split に入らないので，必ず bet_amount[0]
-                for p in players:
-                    if p.is_blackjack:
-                        # Push
-                        print("Push!")
-                    else:
-                        # プレイヤーの負け
-                        print("dealers blackjack!")
-                        p.income -= p.bet_amount[0]
-                    # insurance 処理
-                    if p.bet_insurance:
-                        # insurance が適応される場合
-                        p.income += p.original_bet
-            else:
-                # ディーラーが　BJ でない場合．
-                for p in players:
-                    if p.is_blackjack:
-                        # プレイヤーのBJ！
-                        # split には入らない．
-                        print(p.name, "s blackjack!")
-                        p.income += p.original_bet * 1.5
-                    else:
-                        # スコア勝負
-                        for hand_num in range(len(p.hand)):
-                            if calc_hand(dealer.hand) < calc_hand(p.hand[hand_num]):
-                                # ここスプリット時の print出力 をどうするか考える　todo
-                                print(p.name, "s win!")
-                                p.income += p.bet_amount[hand_num]
-                            elif calc_hand(dealer.hand) == calc_hand(p.hand[hand_num]):
-                                # 引き分け時
-                                print("push")
-                                p.income += 0
-                            else:
-                                print(p.name, "lose!")
-                                p.income -= p.bet_amount[hand_num]
-                    if p.bet_insurance:
-                        # insurance 失敗
-                        p.income -= p.original_bet
-            # - 清算
-            for p in players:
-                print(p.name, "s income", p.income)
-                p.bankroll += p.income
-                print(p.name, "s bankroll", p.bankroll)
-                p.income = 0
-            # *+*+*+*+*+*+*+*+**+* ここまで game.py の内容 *+*+*+*+*+*+*+*+**+*
+            main(ws)
     return "none"
+
+def main(ws):
+    # リスト初期化
+    players = []# プレイヤーインスタンスのリスト
+    # - 各インスタンス生成
+    mizuki = Player("mizuki")# ゲームの参加人数に応じて生成。todo
+    players.append(mizuki)
+    # yokosawa = Player("yokosawa")
+    # players.append(yokosawa)
+    dealer = Dealer()
+    deck = Deck(3)
+    # - プレイヤーのベット金額を決定する ***
+    for p in players:
+        p.bet()
+    # - プレイヤーにカードを配る ***
+    for p in players:
+        p.hand.append([deck.draw()])
+    for p in players:
+        p.hand[0].append(deck.draw())
+    # ブラックジャックかチェック
+    for p in players:
+        if calc_hand(p.hand[0]) == 21:
+            print(p.name, "s blackjack!")
+            p.is_blackjack = True
+        else:
+            p.is_blackjack = False
+    # - ディーラーにカードを配る
+    dealer.hand.append(deck.draw())
+    dealer.hand.append(deck.draw())
+    #     - 内一枚は伏せる
+    #     - A の場合、インシュランス選択 ***
+    if dealer.hand[0] % 100 == 1:
+        for p in players:
+            p.insurance()
+    if calc_hand(dealer.hand) == 21:
+        # ディーラーがブラックジャックだった場合．
+        dealer.is_blackjack = True
+    else:
+        # - ディーラーがブラックジャックでなかった場合．
+        dealer.is_blackjack = False
+        # - プレイヤーのアクション ***
+        for p in players:
+            # プレイヤーが natural 21 でないときのみアクション
+            if not p.is_blackjack:
+                # スプリットできるかどうか決定する
+                if p.hand[0][0] % 100 == p.hand[0][1] % 100:
+                    # ord("y") = 121, ord("n") = 110
+                    print("split? - y/n")
+                    split_key = ord(readchar.readchar())
+                    if split_key == 121:
+                        # yes
+                        p.hand.append([p.hand[0].pop(0)])
+                        p.bet_amount.append(p.original_bet)
+            # どのハンド(スプリット時)に対するアクションか決めるのが hand_num
+            for hand_num in range(len(p.hand)):
+                p.key_input(hand_num)
+        # - ディーラーのアクション
+        dealer.action()
+    print("dealer hand", dealer.hand)
+    for p in players:
+        print(p.name, p.hand)
+    # - 勝敗，インシュランス，サレンダー，ブラックジャック の判断
+    if dealer.is_blackjack:
+        # ディーラーが　BJ だった場合．
+        # この場合，split に入らないので，必ず bet_amount[0]
+        for p in players:
+            if p.is_blackjack:
+                # Push
+                print("Push!")
+            else:
+                # プレイヤーの負け
+                print("dealers blackjack!")
+                p.income -= p.bet_amount[0]
+            # insurance 処理
+            if p.bet_insurance:
+                # insurance が適応される場合
+                p.income += p.original_bet
+    else:
+        # ディーラーが　BJ でない場合．
+        for p in players:
+            if p.is_blackjack:
+                # プレイヤーのBJ！
+                # split には入らない．
+                print(p.name, "s blackjack!")
+                p.income += p.original_bet * 1.5
+            else:
+                # スコア勝負
+                for hand_num in range(len(p.hand)):
+                    if calc_hand(dealer.hand) < calc_hand(p.hand[hand_num]):
+                        # ここスプリット時の print出力 をどうするか考える　todo
+                        print(p.name, "s win!")
+                        p.income += p.bet_amount[hand_num]
+                    elif calc_hand(dealer.hand) == calc_hand(p.hand[hand_num]):
+                        # 引き分け時
+                        print("push")
+                        p.income += 0
+                    else:
+                        print(p.name, "lose!")
+                        p.income -= p.bet_amount[hand_num]
+            if p.bet_insurance:
+                # insurance 失敗
+                p.income -= p.original_bet
+    # - 清算
+    for p in players:
+        print(p.name, "s income", p.income)
+        p.bankroll += p.income
+        print(p.name, "s bankroll", p.bankroll)
+        p.income = 0
+
 if __name__ == "__main__":
     app.debug = True
     host = 'localhost'
