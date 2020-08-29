@@ -15,6 +15,7 @@ import numpy as np
 import random
 
 import readchar
+import json
 
 def calc_hand(hand_array):
     score = 0
@@ -28,7 +29,7 @@ def calc_hand(hand_array):
         elif num in [1]:
             ace_count += 1
     # A の補正計算
-    for i in range(ace_count):
+    for _ in range(ace_count):
         if score + 11 > 21:
             score += 1
         else:
@@ -38,7 +39,7 @@ def calc_hand(hand_array):
     return score
 # *+*+*+*+*+*+*+*+**+* ここまで game.py の内容 *+*+*+*+*+*+*+*+**+*
 @app.route("/")
-def main():
+def index():
     return render_template("index.html")
 
 @app.route('/pipe')
@@ -54,7 +55,7 @@ def pipe():
             # ws.send("test message")
             main(ws)
         ws.close()
-    return "none"
+    return 200
 
 def main(ws):
     class Player:
@@ -200,10 +201,37 @@ def main(ws):
         if score > 21:
             score = 0
         return score
+    
+    def add_card_to_hand(ws, player_hand, dealer_hand, player_add_card=False, dealer_add_card=False):
+        '''
+        ハンドにカードを追加し、追加したタイミングでフロントに json を投げる関数
+        カードを追加せずに json を投げる場合は add_card には False を代入する
+        '''
+        # TODO: カード二枚追加する場合に対応できない？
+        # カード追加処理。追加しないときはスルーされる
+        if player_add_card:
+            player_hand.append(player_add_card)
+        if dealer_add_card:
+            dealer_hand.append(dealer_add_card)
+        # player hand を int にキャスト
+        int_player_hand = []
+        for c in player_hand:
+            int_player_hand.append(int(c))
+        # dealer hand を int にキャスト
+        int_dealer_hand = []
+        for c in dealer_hand:
+            int_dealer_hand.append(int(c))
+        # json 投げる
+        ws.send(json.dumps(
+            {
+                "player_hand": int_player_hand,
+                "dealer_hand": int_dealer_hand,
+            }
+            ))
 
     print("------------------------ GAME START ------------------------")
     # リスト初期化
-    players = []# プレイヤーインスタンスのyリスト
+    players = []# プレイヤーインスタンスのリスト
     # - 各インスタンス生成
     mizuki = Player("mizuki")# ゲームの参加人数に応じて生成。todo
     players.append(mizuki)
@@ -218,17 +246,18 @@ def main(ws):
     for p in players:
         p.hand.append([deck.draw()])
     for p in players:
-        p.hand[0].append(deck.draw())
+        # 二回目にカードを追加するタイミングで json 投げる
+        add_card_to_hand(ws=ws, player_hand=p.hand[0], dealer_hand=[], player_add_card=deck.draw())
     # ブラックジャックかチェック
     for p in players:
         if calc_hand(p.hand[0]) == 21:
-            print(p.name, "s blackjack!")
             p.is_blackjack = True
         else:
             p.is_blackjack = False
     # - ディーラーにカードを配る
     dealer.hand.append(deck.draw())
     dealer.hand.append(deck.draw())
+    # add_card_to_hand(ws, dealer.hand, deck.draw())
     #     - 内一枚は伏せる
     #     - A の場合、インシュランス選択 ***
     if dealer.hand[0] % 100 == 1:

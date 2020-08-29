@@ -9,9 +9,15 @@
     <div>Black Jack App</div>
     <!-- <input type="text" placeholder="some message" id="msg">
     <button onclick="send_message()">送信</button> -->
-    <button onclick="hit()">ヒット</button>
-    <button onclick="stand()">スタンド</button>
-    <button onclick="game_exit()">ゲーム終了</button>
+    <button onclick="action(this)" id="hit">ヒット</button>
+    <button onclick="action(this)" id="stand">スタンド</button>
+    <button onclick="action(this)" id="double">ダブルダウン</button>
+    <button onclick="action(this)" id="surrender">サレンダー</button>
+    <button onclick="gameExit()">ゲーム終了</button>
+    <div>ディーラーのハンド</div>
+    <div id="dealer_hand"></div>
+    <div>プレイヤーのハンド</div>
+    <div id="player_hand"></div>
 </body>
 <script text="text/javascript" src="/static/js/main.js"></script>
 </html>
