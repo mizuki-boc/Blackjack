@@ -1,4 +1,7 @@
 if __name__ == "__main__":
-    a = []
-    a.append(1)
-    a.append()
+    a = False
+    b = False
+    if a or b:
+        print("or")
+    else:
+        print("else")
