@@ -449,7 +449,7 @@ def main(ws):
                         is_player_win=is_player_win)
     # 次のゲームを続行するかどうかの入力待ち
     # TODO: ここ関数にして hit とかのアクション選択時にも流用してもいいかも
-    receive_input(ws, "to_next_game")..
+    receive_input(ws, "to_next_game")
     
 
 if __name__ == "__main__":
