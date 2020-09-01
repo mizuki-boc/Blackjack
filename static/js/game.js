@@ -41,25 +41,6 @@ connection.onmessage = function (event) {
         // pop_message に メッセージが代入されているとき
         pop_message_html.innerHTML = json_data.pop_message;
     }
-
-    // 結果の HTML 書き換え TODO: switch
-    result = document.getElementById("result");
-    if (json_data.is_player_win == 0) {
-        // 未
-        result.innerHTML = "";
-    } else if (json_data.is_player_win == 1) {
-        // 勝ち
-        result.innerHTML = "you win!!";
-    } else if (json_data.is_player_win == 2) {
-        // プッシュ
-        result.innerHTML = "push";
-    } else if (json_data.is_player_win == 3) {
-        // 負け
-        result.innerHTML = "you lose!";
-    } else if (json_data.is_player_win == 4) {
-        // サレンダー
-        result.innerHTML = "you surrendered!";
-    }
 }
 
 function exitGame() {
@@ -80,14 +61,18 @@ function action(ele) {
     connection.send(id_value);
 }
 
-function cardnumToSuit(player_hand) {
+function cardnumToSuit(hand) {
     // 仮想カード番号のリスト から マークのリストに変換する関数
     suit_list = ["♥", "♦", "♣", "♠"];
-    str_player_hand = [];
-    for (let i = 0; i < player_hand.length; i++) {
-        num = player_hand[i] % 100;
-        suit = suit_list[(player_hand[i] - num) / 100 - 1];
-        str_player_hand.push(suit + String(num));
+    str_hand = [];
+    for (let i = 0; i < hand.length; i++) {
+        if (hand[i] == 0) {
+            str_hand.push("？？")
+        } else {
+            num = hand[i] % 100;
+            suit = suit_list[(hand[i] - num) / 100 - 1];
+            str_hand.push(suit + String(num));
+        }
     }
-    return str_player_hand;
+    return str_hand;
 }
