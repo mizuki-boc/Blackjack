@@ -1,7 +1,7 @@
 if __name__ == "__main__":
-    a = False
-    b = False
-    if a or b:
-        print("or")
-    else:
-        print("else")
+    a = [1, 2]
+    b = [3, 4]
+    tmp = []
+    tmp.append(a)
+    tmp.append(b)
+    print(tmp)

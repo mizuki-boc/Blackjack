@@ -48,6 +48,7 @@ def main(ws):
             self.is_blackjack = False
             self.bet_insurance = False
             self.bet_surrender = False
+            self.split = False
 
         def bet(self):
             self.original_bet = 100# 適当、最終的に各プレイヤーが自由に入力できるようにする。
@@ -83,7 +84,7 @@ def main(ws):
                 # hit
                 self.hand[hand_num].append(deck.draw())
                 # json送信
-
+                send_json_data(ws=ws, player_hand=self.hand)
                 # burst 確認
                 if 0 < calc_hand(self.hand[hand_num]) < 21:
                     # 一度ヒットした場合．次はヒットかスタンドのみ
@@ -106,7 +107,7 @@ def main(ws):
                 if key == "hit":
                     self.hand[hand_num].append(deck.draw())
                     # json送信
-
+                    send_json_data(ws=ws, player_hand=self.hand)
             elif key == "surrender" and can_surrender_flag:
                 # surrender
                 self.bet_surrender = True
@@ -114,6 +115,7 @@ def main(ws):
             # 呼ばれた時に insurance するかしないか選択する．
             # した場合， self.bet_insurance = True
             print("Insurance ? - y/n")
+            send_json_data(ws=ws, pop_message="インシュランスしますか？")
             key = receive_input(ws=ws, key_word=["yes", "no"])
             if key == "yes":
                 # y
@@ -133,7 +135,7 @@ def main(ws):
                 # hit 
                 self.hand.append(deck.draw())
                 # json送信
-                add_card_to_hand(ws=ws,
+                send_json_data(ws=ws,
                                 player_hand=False,
                                 dealer_hand=self.hand,
                 )
@@ -200,39 +202,38 @@ def main(ws):
             score = 0
         return score
     
-    def add_card_to_hand(
+    def send_json_data(
                     ws,
-                    player_hand,#False ならフロントの player_hand は更新しない
-                    dealer_hand,#False ならフロントの dealer_hand は更新しない
-                    player_add_card=False,
-                    dealer_add_card=False,
+                    player_hand=False,#False ならフロントの player_hand は更新しない
+                    dealer_hand=False,#False ならフロントの dealer_hand は更新しない
                     is_player_win=0,
-                    is_split_hand=False):
+                    is_split_hand=False,
+                    pop_message=""):
         '''
-        ハンドにカードを追加し、追加したタイミングでフロントに json を投げる関数
+        ハンドにカードを追加し、追加したタイミングでブラウザに json を投げる関数
         カードを追加せずに json を投げる場合は add_card には False を代入する
         - json の内容
         player_hand = プレイヤーのハンド
         dealer_hand = ディーラーのハンド
         is_player_win = 0=未完了, 1=勝ち, 2=プッシュ, 3=負け, 4=サレンダー
         is_split_hand = スプリットしてるかどうか、True ならスプリットしてる状態
+        pop_message = ブラウザに表示させるメッセージ
         '''
-        # TODO: カード二枚追加する場合に対応できない？
-        # TODO: カード追加機能なくす。そんで名前変える
-        # カード追加処理。add_card に何か代入されている場合は追加する
-        if player_add_card:
-            player_hand.append(player_add_card)
-        if dealer_add_card:
-            dealer_hand.append(dealer_add_card)
         # player hand を int にキャスト
         if player_hand == False:
             # Flase の場合、フロントの更新なし
             int_player_hand = False
         else:
-            # 手札配列が代入されているときは int にキャストする
             int_player_hand = []
-            for c in player_hand:
-                int_player_hand.append(int(c))
+            if is_split_hand:
+                for hand_num in range(len(player_hand)):
+                    hand_tmp = []
+                    for c in player_hand[hand_num]:
+                        hand_tmp.append(int(c))
+                    int_player_hand.append(hand_tmp)
+            else:
+                for c in player_hand[0]:
+                    int_player_hand.append(int(c))
         # dealer hand を int にキャスト
         if dealer_hand == False:
             int_dealer_hand = False
@@ -246,7 +247,8 @@ def main(ws):
                 "player_hand": int_player_hand,
                 "dealer_hand": int_dealer_hand,
                 "is_player_win": is_player_win,
-                "is_split_hand": is_split_hand
+                "is_split_hand": is_split_hand,
+                "pop_message": pop_message
             }))
 
     def receive_input(ws, key_word):
@@ -267,6 +269,8 @@ def main(ws):
     # - 各インスタンス生成
     mizuki = Player("mizuki")# ゲームの参加人数に応じて生成。todo
     players.append(mizuki)
+    for p in players:
+        p.split = False
     # yokosawa = Player("yokosawa")
     # players.append(yokosawa)
     dealer = Dealer()
@@ -290,8 +294,8 @@ def main(ws):
     dealer.hand.append(deck.draw())
     # json送信
     for p in players:
-        add_card_to_hand(ws=ws,
-                        player_hand=p.hand[0],
+        send_json_data(ws=ws,
+                        player_hand=p.hand,
                         dealer_hand=dealer.hand,
         )
     #     - 内一枚は伏せる
@@ -311,26 +315,31 @@ def main(ws):
             # プレイヤーが natural 21 でないときのみアクション
             if not p.is_blackjack:
                 # スプリットできるとき
-                # デバッグコード
-                p.hand[0][0] = 101
-                p.hand[0][1] = 101
                 if p.hand[0][0] % 100 == p.hand[0][1] % 100:
                     print("split? - y/n")
+                    send_json_data(ws=ws, pop_message="スプリットしますか？")
                     split_key = receive_input(ws=ws, key_word=["yes", "no"])
                     if split_key == "yes":
                         # yes 時の処理
+                        p.split = True
                         p.hand.append([p.hand[0].pop(0)])
                         p.bet_amount.append(p.original_bet)
                     elif split_key == "no":
                         # no 時
                         pass
                 # どのハンド(スプリット時)に対するアクションか決めるのが hand_num
-                if len(p.hand) > 1:
+                if p.split:
                     # スプリットしてる場合、action は一回まで。
                     # 二枚目は強制的(?)にヒット
                     for hand_num in range(len(p.hand)):
                         p.hand[hand_num].append(deck.draw())
                     print(p.hand)
+                    # json送信
+                    send_json_data(ws=ws,
+                                    player_hand=p.hand,
+                                    dealer_hand=False,
+                                    is_split_hand=p.split
+                    )
                     # 三枚目は hit or stand のみ選択可能
                     # TODO: ここダブルできないの？
                     for hand_num in range(len(p.hand)):
@@ -342,12 +351,11 @@ def main(ws):
                             pass
                         print(p.hand[hand_num])
                         # json送信
-                        for p in players:
-                            add_card_to_hand(ws=ws,
-                                            player_hand=p.hand[hand_num],
-                                            dealer_hand=False,
-                                            is_split_hand=True
-                            )
+                        send_json_data(ws=ws,
+                                        player_hand=p.hand,
+                                        dealer_hand=False,
+                                        is_split_hand=p.split
+                        )
 
                 else:
                     for hand_num in range(len(p.hand)):
@@ -358,8 +366,6 @@ def main(ws):
     print("dealer hand", dealer.hand)
     for p in players:
         print(p.name, p.hand)
-    # json送信
-
     # 勝敗の決定
     for p in players:
         if p.bet_surrender:
@@ -442,13 +448,14 @@ def main(ws):
             p.income = 0
     # json送信 - 結果の表示
     for p in players:
-        for hand_num in range(len(p.hand)):
-            add_card_to_hand(ws=ws,
-                        player_hand=p.hand[hand_num],
+        print(p.split)
+        send_json_data(ws=ws,
+                        player_hand=p.hand,
                         dealer_hand=dealer.hand,
-                        is_player_win=is_player_win)
+                        is_player_win=is_player_win,
+                        is_split_hand=p.split
+        )
     # 次のゲームを続行するかどうかの入力待ち
-    # TODO: ここ関数にして hit とかのアクション選択時にも流用してもいいかも
     receive_input(ws, "to_next_game")
     
 

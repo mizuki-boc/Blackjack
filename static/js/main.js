@@ -9,18 +9,37 @@ connection.onmessage = function (event) {
     json_data = JSON.parse(event.data);
 
     // プレイヤーの ハンドHTML書き換え
-    player_hand = document.getElementById("player_hand");
+    player_hand_html = document.getElementById("player_hand");
     // player_hand が False の場合、 False の箇所は更新しない
     if (json_data.player_hand != false) {
-        // TODO: 暫定で cardnumToSuit で文字のマークにしてるが、画像とかにする場合はここを変更する
-        player_hand.innerHTML = cardnumToSuit(json_data.player_hand);
+        // 空に初期化する
+        player_hand_html.textContent = '';
+        // スプリットハンドのときと通常時とで表示方法を切り替える
+        if (json_data.is_split_hand) {
+            for (let i = 0; i < json_data.player_hand.length; i++) {
+                hand = cardnumToSuit(json_data.player_hand[i]);
+                player_hand_html.insertAdjacentHTML("afterbegin", "<div>" + hand + "</div>")
+                // player_hand_html.innerHTML = "<div>" + hand + "</div>";
+            }
+        } else {
+            player_hand_html.innerHTML = cardnumToSuit(json_data.player_hand);
+        }
     }
     
     // ディーラーの ハンドHTML書き換え
-    dealer_hand = document.getElementById("dealer_hand");
+    dealer_hand_html = document.getElementById("dealer_hand");
     // dealer_hand が False の場合、 False の箇所は更新しない
     if (json_data.dealer_hand != false) {
-        dealer_hand.innerHTML = cardnumToSuit(json_data.dealer_hand);
+        dealer_hand_html.innerHTML = cardnumToSuit(json_data.dealer_hand);
+    }
+
+    // ポップメッセージの更新
+    // 初期化
+    pop_message_html = document.getElementById("pop_message");
+    pop_message_html.textContent = '';
+    if (json_data.pop_message) {
+        // pop_message に メッセージが代入されているとき
+        pop_message_html.innerHTML = json_data.pop_message;
     }
 
     // 結果の HTML 書き換え TODO: switch
