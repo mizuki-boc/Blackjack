@@ -43,7 +43,7 @@ def main(ws):
     class Player:
         def __init__(self, name):
             self.name = name
-            self.bankroll = 1000# 適当、最終的にアカウントと紐づけると面白いかも todo
+            self.bankroll = 1000
             self.original_bet = 0
             self.bet_amount = []
             self.income = 0
@@ -52,9 +52,12 @@ def main(ws):
             self.bet_insurance = False
             self.bet_surrender = False
             self.split = False
+            # TODO: bankroll を firestore からロードする
 
         def bet(self):
-            self.original_bet = 100# 適当、最終的に各プレイヤーが自由に入力できるようにする。
+            self.original_bet = 100
+            # TODO: bet 額を html から読み取る
+    
             self.bet_amount.append(self.original_bet)
             print("bet amount =", self.bet_amount)
 
@@ -270,7 +273,7 @@ def main(ws):
     # リスト初期化
     players = []# プレイヤーインスタンスのリスト
     # - 各インスタンス生成
-    mizuki = Player("mizuki")# ゲームの参加人数に応じて生成。todo
+    mizuki = Player(name="mizuki")# ゲームの参加人数に応じて生成。todo
     players.append(mizuki)
     for p in players:
         p.split = False
