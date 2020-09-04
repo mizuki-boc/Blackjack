@@ -3,8 +3,6 @@ var connection = new WebSocket("ws://localhost:8888/pipe");
 
 // サーバからメッセージを受け取った時の処理
 connection.onmessage = function (event) {
-    // TODO: 実行可能アクションをサーバから受け取って，実行不可なアクションボタンが押された時，ユーザに通知する仕組みを作る．
-    // 加えて，サーバ側でもチェックさせる．
     console.log(event.data);
     json_data = JSON.parse(event.data);
 
@@ -34,19 +32,29 @@ connection.onmessage = function (event) {
     }
 
     // ポップメッセージの更新
-    // 初期化
     pop_message_html = document.getElementById("pop_message");
     pop_message_html.textContent = '';
     if (json_data.pop_message) {
         // pop_message に メッセージが代入されているとき
         pop_message_html.innerHTML = json_data.pop_message;
     }
+
+    // ボタンのインアクティベート
+    document.getElementById("hit").disabled = !json_data.active_button.hit
+    document.getElementById("stand").disabled = !json_data.active_button.stand
+    document.getElementById("double").disabled = !json_data.active_button.double
+    document.getElementById("surrender").disabled = !json_data.active_button.surrender
+    document.getElementById("yes").disabled = !json_data.active_button.yes
+    document.getElementById("no").disabled = !json_data.active_button.no
 }
 
 function exitGame() {
-    // TODO: 終了ボタン押したときの警告表示(終了しますか？等)
     // TODO: 押すとサーバー側でエラー出るのでその対処
-    connection.close();
+    ret = confirm("ゲームを終了します．よろしいですか？");
+    if (ret == true){
+        connection.close();
+        location.href = "/";
+    }
 }
 
 function nextGame() {
@@ -55,7 +63,6 @@ function nextGame() {
 }
 
 function action(ele) {
-    // TODO: 選択できないアクションがある場合，ユーザにできないと通知する．サーバからの連絡が必要．
     // 押したボタンの id を送信する関数
     id_value = ele.id;
     connection.send(id_value);

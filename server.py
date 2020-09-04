@@ -57,7 +57,7 @@ def main(ws):
         def bet(self):
             self.original_bet = 100
             # TODO: bet 額を html から読み取る
-    
+
             self.bet_amount.append(self.original_bet)
             print("bet amount =", self.bet_amount)
 
@@ -73,7 +73,12 @@ def main(ws):
             if can_surrender_flag:
                 print("Surrender = u key")
             # json送信
-            send_json_data(ws=ws, pop_message="アクションを選択してください")
+            send_json_data(ws=ws,
+                        pop_message="アクションを選択してください",
+                        can_hit_flag=True,
+                        can_stand_flag=True,
+                        can_double_flag=True,
+                        can_surrender_flag=True)
             # stand は常に可能
             key_word = ["stand"]
             if can_hit_flag:
@@ -90,7 +95,7 @@ def main(ws):
                 # hit
                 self.hand[hand_num].append(deck.draw())
                 # json送信
-                send_json_data(ws=ws, player_hand=self.hand)
+                send_json_data(ws=ws, player_hand=self.hand, can_hit_flag=True, can_stand_flag=True)
                 # burst 確認
                 if 0 < calc_hand(self.hand[hand_num]) < 21:
                     # 一度ヒットした場合．次はヒットかスタンドのみ
@@ -107,7 +112,7 @@ def main(ws):
                 print("bet amount =", self.bet_amount)
                 # ダブルダウンした場合．次はヒットかスタンドのみ，それで終了．
                 # json送信
-                send_json_data(ws=ws, pop_message="アクションを選択してください")
+                send_json_data(ws=ws, pop_message="アクションを選択してください", can_hit_flag=True, can_stand_flag=True)
                 print("Hit = h key")
                 print("Stand = s key")
                 # key = ord(readchar.readchar())
@@ -123,7 +128,7 @@ def main(ws):
             # 呼ばれた時に insurance するかしないか選択する．
             # した場合， self.bet_insurance = True
             print("Insurance ? - y/n")
-            send_json_data(ws=ws, pop_message="インシュランスしますか？")
+            send_json_data(ws=ws, pop_message="インシュランスしますか？", can_select_yes_flag=True, can_select_no_flag=True)
             key = receive_input(ws=ws, key_word=["yes", "no"])
             if key == "yes":
                 # y
@@ -215,7 +220,13 @@ def main(ws):
                     player_hand=False,#False ならフロントの player_hand は更新しない
                     dealer_hand=False,#False ならフロントの dealer_hand は更新しない
                     is_split_hand=False,
-                    pop_message="アクションを選択してください"):
+                    pop_message="アクションを選択してください",
+                    can_hit_flag=False,
+                    can_stand_flag=False,
+                    can_double_flag=False,
+                    can_surrender_flag=False,
+                    can_select_yes_flag=False,
+                    can_select_no_flag=False):
         '''
         ハンドにカードを追加し、追加したタイミングでブラウザに json を投げる関数
         カードを追加せずに json を投げる場合は add_card には False を代入する
@@ -225,6 +236,7 @@ def main(ws):
         is_player_win = 0=未完了, 1=勝ち, 2=プッシュ, 3=負け, 4=サレンダー
         is_split_hand = スプリットしてるかどうか、True ならスプリットしてる状態
         pop_message = ブラウザに表示させるメッセージ
+        active_button = 実行可能なアクションボタンを通知する．
         '''
         # player hand を int にキャスト
         if player_hand == False:
@@ -248,13 +260,21 @@ def main(ws):
             int_dealer_hand = []
             for c in dealer_hand:
                 int_dealer_hand.append(int(c))
+        active_button = {
+                        "hit": can_hit_flag,
+                        "stand": can_stand_flag,
+                        "double": can_double_flag,
+                        "surrender": can_surrender_flag,
+                        "yes": can_select_yes_flag,
+                        "no": can_select_no_flag}
         # json 投げる
         ws.send(json.dumps(
             {
                 "player_hand": int_player_hand,
                 "dealer_hand": int_dealer_hand,
                 "is_split_hand": is_split_hand,
-                "pop_message": pop_message
+                "pop_message": pop_message,
+                "active_button": active_button
             }))
 
     def receive_input(ws, key_word):
@@ -268,6 +288,10 @@ def main(ws):
             if key in key_word:
                 flag = False
         return key
+
+    def test():
+        pass
+
 
     print("------------------------ GAME START ------------------------")
     # リスト初期化
@@ -306,9 +330,12 @@ def main(ws):
         send_json_data(ws=ws,
                         player_hand=p.hand,
                         dealer_hand=[0, dealer.hand[1]],
+                        can_hit_flag=True,
+                        can_stand_flag=True,
+                        can_double_flag=True,
+                        can_surrender_flag=True
         )
-    #     - 内一枚は伏せる
-    #     - A の場合、インシュランス選択 ***
+    # A の場合、インシュランス選択
     if dealer.hand[0] % 100 == 1:
         for p in players:
             p.insurance()
@@ -326,7 +353,11 @@ def main(ws):
                 # スプリットできるとき
                 if p.hand[0][0] % 100 == p.hand[0][1] % 100:
                     print("split? - y/n")
-                    send_json_data(ws=ws, pop_message="スプリットしますか？")
+                    # json送信
+                    send_json_data(ws=ws,
+                                pop_message="スプリットしますか？",
+                                can_select_yes_flag=True,
+                                can_select_no_flag=True)
                     split_key = receive_input(ws=ws, key_word=["yes", "no"])
                     if split_key == "yes":
                         # yes 時の処理
@@ -343,14 +374,15 @@ def main(ws):
                     for hand_num in range(len(p.hand)):
                         p.hand[hand_num].append(deck.draw())
                     print(p.hand)
-                    # json送信
-                    send_json_data(ws=ws,
-                                    player_hand=p.hand,
-                                    is_split_hand=p.split,
-                    )
                     # 三枚目は hit or stand のみ選択可能
                     # TODO: ここダブルできないの？
                     for hand_num in range(len(p.hand)):
+                        # json送信
+                        send_json_data(ws=ws,
+                                    player_hand=p.hand,
+                                    is_split_hand=p.split,
+                                    can_hit_flag=True,
+                                    can_stand_flag=True)
                         # key = ws.receive()
                         key = receive_input(ws, ["hit", "stand"])
                         if key == "hit":
@@ -358,12 +390,11 @@ def main(ws):
                         elif key == "stand":
                             pass
                         print(p.hand[hand_num])
-                        # json送信
-                        send_json_data(ws=ws,
-                                        player_hand=p.hand,
-                                        is_split_hand=p.split,
-                        )
-
+                    # json送信
+                    send_json_data(ws=ws,
+                                    player_hand=p.hand,
+                                    is_split_hand=p.split,
+                    )
                 else:
                     for hand_num in range(len(p.hand)):
                         p.key_input(hand_num)# メソッド内で json 送信してる
@@ -424,7 +455,6 @@ def main(ws):
                         else:
                             # スコア勝負
                             if calc_hand(dealer.hand) < calc_hand(p.hand[hand_num]):
-                                # ここスプリット時の print出力 をどうするか考える　todo
                                 print(p.name, "s win! スコア勝負")
                                 p.income += p.bet_amount[hand_num]
                                 is_player_win = 1
@@ -471,7 +501,7 @@ def main(ws):
                         pop_message=result_message_list[is_player_win]
         )
     # 次のゲームを続行するかどうかの入力待ち
-    receive_input(ws, "to_next_game")
+    receive_input(ws, ["to_next_game"])
     
 
 if __name__ == "__main__":
