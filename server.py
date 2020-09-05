@@ -73,12 +73,13 @@ def main(ws):
             if can_surrender_flag:
                 print("Surrender = u key")
             # json送信
+            active_button = create_active_button_dictionary(can_hit_flag=True,
+                                                            can_stand_flag=True,
+                                                            can_double_flag=True,
+                                                            can_surrender_flag=True)
             send_json_data(ws=ws,
                         pop_message="アクションを選択してください",
-                        can_hit_flag=True,
-                        can_stand_flag=True,
-                        can_double_flag=True,
-                        can_surrender_flag=True)
+                        active_button=active_button)
             # stand は常に可能
             key_word = ["stand"]
             if can_hit_flag:
@@ -95,7 +96,8 @@ def main(ws):
                 # hit
                 self.hand[hand_num].append(deck.draw())
                 # json送信
-                send_json_data(ws=ws, player_hand=self.hand, can_hit_flag=True, can_stand_flag=True)
+                active_button = create_active_button_dictionary(can_hit_flag=True, can_stand_flag=True)
+                send_json_data(ws=ws, player_hand=self.hand, active_button=active_button)
                 # burst 確認
                 if 0 < calc_hand(self.hand[hand_num]) < 21:
                     # 一度ヒットした場合．次はヒットかスタンドのみ
@@ -112,7 +114,8 @@ def main(ws):
                 print("bet amount =", self.bet_amount)
                 # ダブルダウンした場合．次はヒットかスタンドのみ，それで終了．
                 # json送信
-                send_json_data(ws=ws, pop_message="アクションを選択してください", can_hit_flag=True, can_stand_flag=True)
+                active_button = create_active_button_dictionary(can_hit_flag=True, can_stand_flag=True)
+                send_json_data(ws=ws, pop_message="アクションを選択してください", active_button=active_button)
                 print("Hit = h key")
                 print("Stand = s key")
                 # key = ord(readchar.readchar())
@@ -128,7 +131,11 @@ def main(ws):
             # 呼ばれた時に insurance するかしないか選択する．
             # した場合， self.bet_insurance = True
             print("Insurance ? - y/n")
-            send_json_data(ws=ws, pop_message="インシュランスしますか？", can_select_yes_flag=True, can_select_no_flag=True)
+            # json送信
+            active_button = create_active_button_dictionary(can_select_yes_flag=True, can_select_no_flag=True)
+            send_json_data(ws=ws,
+                        pop_message="インシュランスしますか？",
+                        active_button=active_button)
             key = receive_input(ws=ws, key_word=["yes", "no"])
             if key == "yes":
                 # y
@@ -215,18 +222,34 @@ def main(ws):
             score = 0
         return score
     
+    def create_active_button_dictionary(can_hit_flag=False,
+                                        can_stand_flag=False,
+                                        can_double_flag=False,
+                                        can_surrender_flag=False,
+                                        can_select_yes_flag=False,
+                                        can_select_no_flag=False):
+        active_button = {
+            "hit": can_hit_flag,
+            "stand": can_stand_flag,
+            "double": can_double_flag,
+            "surrender": can_surrender_flag,
+            "yes": can_select_yes_flag,
+            "no": can_select_no_flag
+        }
+        return active_button
+
     def send_json_data(
                     ws,
                     player_hand=False,#False ならフロントの player_hand は更新しない
                     dealer_hand=False,#False ならフロントの dealer_hand は更新しない
                     is_split_hand=False,
                     pop_message="アクションを選択してください",
-                    can_hit_flag=False,
-                    can_stand_flag=False,
-                    can_double_flag=False,
-                    can_surrender_flag=False,
-                    can_select_yes_flag=False,
-                    can_select_no_flag=False):
+                    active_button={"hit":False,
+                                "stand":False,
+                                "double":False,
+                                "surrender":False,
+                                "yes": False,
+                                "no": False}):
         '''
         ハンドにカードを追加し、追加したタイミングでブラウザに json を投げる関数
         カードを追加せずに json を投げる場合は add_card には False を代入する
@@ -260,13 +283,6 @@ def main(ws):
             int_dealer_hand = []
             for c in dealer_hand:
                 int_dealer_hand.append(int(c))
-        active_button = {
-                        "hit": can_hit_flag,
-                        "stand": can_stand_flag,
-                        "double": can_double_flag,
-                        "surrender": can_surrender_flag,
-                        "yes": can_select_yes_flag,
-                        "no": can_select_no_flag}
         # json 投げる
         ws.send(json.dumps(
             {
@@ -325,15 +341,16 @@ def main(ws):
     # マスク (=0) した ディーラーのハンドを 送信する
     # masked_dealer_hand = dealer.hand
     # masked_dealer_hand[0] = 0
-    # json送信
+    # json送信 - hand
     for p in players:
+        active_button = create_active_button_dictionary(can_hit_flag=True,
+                                                        can_stand_flag=True,
+                                                        can_double_flag=True,
+                                                        can_surrender_flag=True)
         send_json_data(ws=ws,
                         player_hand=p.hand,
                         dealer_hand=[0, dealer.hand[1]],
-                        can_hit_flag=True,
-                        can_stand_flag=True,
-                        can_double_flag=True,
-                        can_surrender_flag=True
+                        active_button = active_button
         )
     # A の場合、インシュランス選択
     if dealer.hand[0] % 100 == 1:
@@ -353,11 +370,11 @@ def main(ws):
                 # スプリットできるとき
                 if p.hand[0][0] % 100 == p.hand[0][1] % 100:
                     print("split? - y/n")
-                    # json送信
+                    # json送信 - message action
+                    active_button = create_active_button_dictionary(can_select_yes_flag=True, can_select_no_flag=True)
                     send_json_data(ws=ws,
                                 pop_message="スプリットしますか？",
-                                can_select_yes_flag=True,
-                                can_select_no_flag=True)
+                                active_button=active_button)
                     split_key = receive_input(ws=ws, key_word=["yes", "no"])
                     if split_key == "yes":
                         # yes 時の処理
@@ -377,12 +394,12 @@ def main(ws):
                     # 三枚目は hit or stand のみ選択可能
                     # TODO: ここダブルできないの？
                     for hand_num in range(len(p.hand)):
-                        # json送信
+                        # json送信 - hand action
+                        active_button = create_active_button_dictionary(can_hit_flag=True, can_stand_flag=True)
                         send_json_data(ws=ws,
                                     player_hand=p.hand,
                                     is_split_hand=p.split,
-                                    can_hit_flag=True,
-                                    can_stand_flag=True)
+                                    active_button=active_button)
                         # key = ws.receive()
                         key = receive_input(ws, ["hit", "stand"])
                         if key == "hit":
