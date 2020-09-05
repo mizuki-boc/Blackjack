@@ -259,7 +259,7 @@ def main(ws):
         is_player_win = 0=未完了, 1=勝ち, 2=プッシュ, 3=負け, 4=サレンダー
         is_split_hand = スプリットしてるかどうか、True ならスプリットしてる状態
         pop_message = ブラウザに表示させるメッセージ
-        active_button = 実行可能なアクションボタンを通知する．
+        active_button = 実行可能なアクションボタンを通知する．create_active_button_dictionary()で作成可
         '''
         # player hand を int にキャスト
         if player_hand == False:

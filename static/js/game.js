@@ -83,3 +83,10 @@ function cardnumToSuit(hand) {
     }
     return str_hand;
 }
+
+function test() {
+    // これで消えるので，逆(もともと消えてて，ベット完了すると表示される)を実装する
+    // また，１ゲーム終了してまたベットするフェーズになると，game_main_container を非表示に初期化する
+    // そんで，bet 額をバックに送信する．(ここで送信データの json フォーマット化が必要．)
+    document.getElementById("game_main_container").style.display = "none";
+}
