@@ -12,16 +12,11 @@
     <div id="pop_message"></div>
     <div id="bet_form_container">
         <div>ベット額を選択してください</div>
-        <form name="bet_form">
-            <select name="bet_name" id="bet_id" onchange="select_bet_amount(this)">
-                <option value="none">選択してください</option>
-                <option value="100">100</option>
-                <option value="200">200</option>
-                <option value="300">300</option>
-            </select>
-        </form>
+        <button id="100" onclick="select_bet_amount(this)">100</button>
+        <button id="200" onclick="select_bet_amount(this)">200</button>
     </div>
     <div id="game_main_container" style="display: none;">
+        <div id="bet_amount"></div>
         <button onclick="action(this)" id="hit">ヒット</button>
         <button onclick="action(this)" id="stand">スタンド</button>
         <button onclick="action(this)" id="double">ダブルダウン</button>
@@ -35,7 +30,7 @@
         <div>結果</div>
         <div id="result"></div>
         <button onclick="action(this)" id="to_next_game">次のゲームへ</button>
-        <button onclick="exitGame()">ゲーム終了</button>
     </div>
+    <button onclick="exitGame()">ゲーム終了</button>
 </body>
 </html>

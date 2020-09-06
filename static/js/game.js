@@ -49,8 +49,9 @@ connection.onmessage = function (event) {
     document.getElementById("to_next_game").disabled = !json_data.active_button.to_next_game
 
     // バンクロールの更新
-    if (json_data.player_bankroll != null) {
-        document.getElementById("bankroll").innerHTML = json_data.player_bankroll
+    if (json_data.player_bankroll != false) {
+        bankroll_pre_str = "所持金: "
+        document.getElementById("bankroll").innerHTML = bankroll_pre_str + json_data.player_bankroll
     }
 }
 
@@ -97,21 +98,9 @@ function cardnumToSuit(hand) {
     return str_hand;
 }
 
-function test() {
-    // これで消えるので，逆(もともと消えてて，ベット完了すると表示される)を実装する
-    // また，１ゲーム終了してまたベットするフェーズになると，game_main_container を非表示に初期化する
-    // そんで，bet 額をバックに送信する．(ここで送信データの json フォーマット化が必要．)
-    document.getElementById("game_main_container").style.display = "none";
-}
-
-function select_bet_amount() {
-    // セレクトフォームから option の value を取得する
-    const bet_name = document.bet_form.bet_name;
-    const num = bet_name.selectedIndex;
-    const str_bet_amount = bet_name.options[num].value;
-    if (str_bet_amount == "none") {
-        return
-    }
+function select_bet_amount(ele) {
+    // 押された bet button の id を取得して、送信
+    str_bet_amount = ele.id;
     console.log(str_bet_amount)
     // json送信
     dic = {
@@ -122,5 +111,8 @@ function select_bet_amount() {
     // game_main_container を表示する
     document.getElementById("game_main_container").style.display = "block";
     // bet_form を非表示にする
-    document.getElementById("bet_form_container").style.display = "none"
+    document.getElementById("bet_form_container").style.display = "none";
+    // bet_amount に bet 額を表示する
+    bet_amount_pre_str = "ベット額: "
+    document.getElementById("bet_amount").innerHTML = bet_amount_pre_str + str_bet_amount;
 }
