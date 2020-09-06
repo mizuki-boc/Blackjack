@@ -1,5 +1,6 @@
 if __name__ == "__main__":
-    a = ["mizuki", "pero"]
-    b = ["pero", "qtarou"]
-    for aa in a:
-        print(aa in b)
+    a = None
+    b = False
+    print(a, b)
+    print(a == b)
+    print(b == 0)

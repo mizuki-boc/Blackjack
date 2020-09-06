@@ -41,9 +41,10 @@ def pipe():
 
 def main(ws):
     class Player:
-        def __init__(self, name):
+        def __init__(self, name, bankroll):
             self.name = name
-            self.bankroll = 1000
+            # self.bankroll = 1000
+            self.bankroll = bankroll
             self.original_bet = 0
             self.bet_amount = []
             self.income = 0
@@ -54,10 +55,8 @@ def main(ws):
             self.split = False
             # TODO: bankroll を firestore からロードする
 
-        def bet(self):
-            self.original_bet = 100
-            # TODO: bet 額を html から読み取る
-
+        def bet(self, original_bet):
+            self.original_bet = original_bet
             self.bet_amount.append(self.original_bet)
             print("bet amount =", self.bet_amount)
 
@@ -88,7 +87,7 @@ def main(ws):
                 key_word.append("double")
             if can_surrender_flag:
                 key_word.append("surrender")
-            key = receive_input(ws, key_word)
+            key = receive_action_input(ws, key_word)
             if key == "stand":
                 # stand
                 pass
@@ -119,7 +118,7 @@ def main(ws):
                 print("Hit = h key")
                 print("Stand = s key")
                 # key = ord(readchar.readchar())
-                key = receive_input(ws, ["hit", "stand"])
+                key = receive_action_input(ws, ["hit", "stand"])
                 if key == "hit":
                     self.hand[hand_num].append(deck.draw())
                     # json送信
@@ -136,7 +135,7 @@ def main(ws):
             send_json_data(ws=ws,
                         pop_message="インシュランスしますか？",
                         active_button=active_button)
-            key = receive_input(ws=ws, key_word=["yes", "no"])
+            key = receive_action_input(ws=ws, key_word=["yes", "no"])
             if key == "yes":
                 # y
                 print("insurance accepted!")
@@ -227,14 +226,20 @@ def main(ws):
                                         can_double_flag=False,
                                         can_surrender_flag=False,
                                         can_select_yes_flag=False,
-                                        can_select_no_flag=False):
+                                        can_select_no_flag=False,
+                                        can_move_to_next_game=False):
+        '''
+        デフォルトの false は非表示を表す。
+        表示したいボタンのフラグに true を立てて ディクショナリを作成する。
+        '''
         active_button = {
             "hit": can_hit_flag,
             "stand": can_stand_flag,
             "double": can_double_flag,
             "surrender": can_surrender_flag,
             "yes": can_select_yes_flag,
-            "no": can_select_no_flag
+            "no": can_select_no_flag,
+            "to_next_game" : can_move_to_next_game
         }
         return active_button
 
@@ -249,17 +254,21 @@ def main(ws):
                                 "double":False,
                                 "surrender":False,
                                 "yes": False,
-                                "no": False}):
+                                "no": False,
+                                "to_next_game": False},
+                    player_bankroll=None):
         '''
         ハンドにカードを追加し、追加したタイミングでブラウザに json を投げる関数
         カードを追加せずに json を投げる場合は add_card には False を代入する
         - json の内容
+        ws = ソケットの変数
         player_hand = プレイヤーのハンド
         dealer_hand = ディーラーのハンド
         is_player_win = 0=未完了, 1=勝ち, 2=プッシュ, 3=負け, 4=サレンダー
         is_split_hand = スプリットしてるかどうか、True ならスプリットしてる状態
         pop_message = ブラウザに表示させるメッセージ
         active_button = 実行可能なアクションボタンを通知する．create_active_button_dictionary()で作成可
+        player_bankroll = プレイヤーのバンクロール
         '''
         # player hand を int にキャスト
         if player_hand == False:
@@ -290,40 +299,57 @@ def main(ws):
                 "dealer_hand": int_dealer_hand,
                 "is_split_hand": is_split_hand,
                 "pop_message": pop_message,
-                "active_button": active_button
+                "active_button": active_button,
+                "player_bankroll": player_bankroll
             }))
 
-    def receive_input(ws, key_word):
+    def receive_action_input(ws, key_word):
         '''
-        フロントから 単一の string が帰ってくるので、その str が
-        選択肢に含まれていない場合、再度入力待ちに遷移する
+        フロントから json が送信されてくるので、
+        json の "action" のキーを取り出す
         '''
         flag = True
         while flag:
-            key = ws.receive()
-            if key in key_word:
+            key = json.loads(ws.receive())
+            if key["action"] in key_word:
                 flag = False
-        return key
-
-    def test():
-        pass
-
+        return key["action"]
+    
+    def receive_bet_input(ws):
+        '''
+        フロントから json が送信されてくるので、
+        json の "bet_amount" のキーを取り出す
+        '''
+        # TODO: receive_action_input() と統合するか考える
+        key = json.loads(ws.receive())["bet_amount"]
+        if key:
+            # bet 額に false が代入されていないとき
+            return int(key)
+        else:
+            pass
 
     print("------------------------ GAME START ------------------------")
     # リスト初期化
     players = []# プレイヤーインスタンスのリスト
     # - 各インスタンス生成
-    mizuki = Player(name="mizuki")# ゲームの参加人数に応じて生成。todo
+    bankroll = 3000# TODO: ここを DB から読み取る
+    mizuki = Player(name="mizuki", bankroll=bankroll)# ゲームの参加人数に応じて生成。todo
     players.append(mizuki)
-    for p in players:
-        p.split = False
     # yokosawa = Player("yokosawa")
     # players.append(yokosawa)
     dealer = Dealer()
     deck = Deck(3)
+    # json送信
+    for p in players:
+        send_json_data(ws=ws,
+                    player_bankroll=p.bankroll,
+                    pop_message="",
+                    active_button=create_active_button_dictionary())
     # - プレイヤーのベット金額を決定する ***
     for p in players:
-        p.bet()
+        original_bet = receive_bet_input(ws=ws)
+        p.bet(original_bet=original_bet)
+        print(original_bet)
     # - プレイヤーにカードを配る ***
     for p in players:
         p.hand.append([deck.draw()])
@@ -338,9 +364,6 @@ def main(ws):
     # - ディーラーにカードを配る
     dealer.hand.append(deck.draw())
     dealer.hand.append(deck.draw())
-    # マスク (=0) した ディーラーのハンドを 送信する
-    # masked_dealer_hand = dealer.hand
-    # masked_dealer_hand[0] = 0
     # json送信 - hand
     for p in players:
         active_button = create_active_button_dictionary(can_hit_flag=True,
@@ -375,7 +398,7 @@ def main(ws):
                     send_json_data(ws=ws,
                                 pop_message="スプリットしますか？",
                                 active_button=active_button)
-                    split_key = receive_input(ws=ws, key_word=["yes", "no"])
+                    split_key = receive_action_input(ws=ws, key_word=["yes", "no"])
                     if split_key == "yes":
                         # yes 時の処理
                         p.split = True
@@ -400,8 +423,7 @@ def main(ws):
                                     player_hand=p.hand,
                                     is_split_hand=p.split,
                                     active_button=active_button)
-                        # key = ws.receive()
-                        key = receive_input(ws, ["hit", "stand"])
+                        key = receive_action_input(ws, ["hit", "stand"])
                         if key == "hit":
                             p.hand[hand_num].append(deck.draw())
                         elif key == "stand":
@@ -510,15 +532,19 @@ def main(ws):
         4: "結果: サレンダーしました"
     }
     print(dealer.hand)
+    # json送信
     for p in players:
+        active_button = create_active_button_dictionary(can_move_to_next_game=True)
         send_json_data(ws=ws,
                         player_hand=p.hand,
                         dealer_hand=dealer.hand,
                         is_split_hand=p.split,
-                        pop_message=result_message_list[is_player_win]
+                        pop_message=result_message_list[is_player_win],
+                        player_bankroll=p.bankroll,
+                        active_button=active_button
         )
     # 次のゲームを続行するかどうかの入力待ち
-    receive_input(ws, ["to_next_game"])
+    receive_action_input(ws, ["to_next_game"])
     
 
 if __name__ == "__main__":
