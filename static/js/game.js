@@ -14,13 +14,24 @@ connection.onmessage = function (event) {
         player_hand_html.textContent = '';
         // スプリットハンドのときと通常時とで表示方法を切り替える
         if (json_data.is_split_hand) {
-            for (let i = 0; i < json_data.player_hand.length; i++) {
-                hand = cardnumToSuit(json_data.player_hand[i]);
-                player_hand_html.insertAdjacentHTML("afterbegin", "<div>" + hand + "</div>")
-                // player_hand_html.innerHTML = "<div>" + hand + "</div>";
+            if (json_data.player_handnum == null) {
+                for (let i = 0; i < json_data.player_hand.length; i++) {
+                    hand = cardnumToSuit(json_data.player_hand[i]);
+                    player_hand_html.insertAdjacentHTML("afterbegin", "<div>" + hand + json_data.result_message[i] + "</div>")
+                }
+            } else {
+                for (let i = 0; i < json_data.player_hand.length; i++) {
+                    if (i == json_data.player_handnum) {
+                        cursor_pre_split = " ← アクションを選択してください";
+                    } else {
+                        cursor_pre_split = "";
+                    }
+                    hand = cardnumToSuit(json_data.player_hand[i]);
+                    player_hand_html.insertAdjacentHTML("afterbegin", "<div>" + hand + cursor_pre_split + "</div>")
+                }
             }
         } else {
-            player_hand_html.innerHTML = cardnumToSuit(json_data.player_hand);
+            player_hand_html.innerHTML = cardnumToSuit(json_data.player_hand) + json_data.result_message[0];
         }
     }
     

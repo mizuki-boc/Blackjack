@@ -53,6 +53,7 @@ def main(ws):
             self.bet_insurance = False
             self.bet_surrender = False
             self.split = False
+            self.is_win = []
             # TODO: bankroll を firestore からロードする
 
         def bet(self, original_bet):
@@ -246,6 +247,7 @@ def main(ws):
     def send_json_data(
                     ws,
                     player_hand=False,#False ならフロントの player_hand は更新しない
+                    player_handnum = None,
                     dealer_hand=False,#False ならフロントの dealer_hand は更新しない
                     is_split_hand=False,
                     pop_message="アクションを選択してください",
@@ -256,19 +258,22 @@ def main(ws):
                                 "yes": False,
                                 "no": False,
                                 "to_next_game": False},
-                    player_bankroll=False):
+                    player_bankroll=False,
+                    result_message=[""]):
         '''
         ハンドにカードを追加し、追加したタイミングでブラウザに json を投げる関数
         カードを追加せずに json を投げる場合は add_card には False を代入する
         - json の内容
         ws = ソケットの変数
         player_hand = プレイヤーのハンド
+        player_handnum = プレイヤーのどっちのハンドか示す。
         dealer_hand = ディーラーのハンド
         is_player_win = 0=未完了, 1=勝ち, 2=プッシュ, 3=負け, 4=サレンダー
         is_split_hand = スプリットしてるかどうか、True ならスプリットしてる状態
         pop_message = ブラウザに表示させるメッセージ
         active_button = 実行可能なアクションボタンを通知する．create_active_button_dictionary()で作成可
         player_bankroll = プレイヤーのバンクロール
+        result_message = 結果表示
         '''
         # player hand を int にキャスト
         if player_hand == False:
@@ -296,16 +301,19 @@ def main(ws):
         ws.send(json.dumps(
             {
                 "player_hand": int_player_hand,
+                "player_handnum": player_handnum,
                 "dealer_hand": int_dealer_hand,
                 "is_split_hand": is_split_hand,
                 "pop_message": pop_message,
                 "active_button": active_button,
-                "player_bankroll": player_bankroll
+                "player_bankroll": player_bankroll,
+                "result_message": result_message
             }))
 
     def receive_action_input(ws, key_word):
         '''
         フロントから json が送信されてくるので、
+        keyword に含まれているワードが帰ってくるまで待ち、
         json の "action" のキーを取り出す
         '''
         flag = True
@@ -379,7 +387,7 @@ def main(ws):
                             active_button = active_button
             )
         # A の場合、インシュランス選択
-        if dealer.hand[0] % 100 == 1:
+        if dealer.hand[1] % 100 == 1:
             for p in players:
                 p.insurance()
         # 勝敗決定処理
@@ -394,6 +402,8 @@ def main(ws):
                 # プレイヤーが natural 21 でないときのみアクション
                 if not p.is_blackjack:
                     # スプリットできるとき
+                    p.hand[0][0] = 101
+                    p.hand[0][1] = 101
                     if p.hand[0][0] % 100 == p.hand[0][1] % 100:
                         print("split? - y/n")
                         # json送信 - message action
@@ -424,6 +434,7 @@ def main(ws):
                             active_button = create_active_button_dictionary(can_hit_flag=True, can_stand_flag=True)
                             send_json_data(ws=ws,
                                         player_hand=p.hand,
+                                        player_handnum=hand_num,
                                         is_split_hand=p.split,
                                         active_button=active_button)
                             key = receive_action_input(ws, ["hit", "stand"])
@@ -447,10 +458,18 @@ def main(ws):
         for p in players:
             print(p.name, p.hand)
         # 勝敗の決定
+        result_message_list = {
+            0: "",
+            1: "結果: 勝ち",
+            2: "結果: Push!",
+            3: "結果: 負け",
+            4: "結果: サレンダーしました"
+        }
         for p in players:
             if p.bet_surrender:
                 print(p.name, "surrendered.")
                 is_player_win = 4
+                p.is_win.append(result_message_list[is_player_win])
             else:
                 if dealer.is_blackjack:# ディーラーが　BJ だった場合．
                     # この場合，split に入らないので，必ず bet_amount[0]
@@ -458,11 +477,13 @@ def main(ws):
                         # Push
                         print("Push!")
                         is_player_win = 2
+                        p.is_win.append(result_message_list[is_player_win])
                     else:
                         # プレイヤーの負け
                         print("dealers blackjack!")
                         p.income -= p.bet_amount[0]
                         is_player_win = 3
+                        p.is_win.append(result_message_list[is_player_win])
                     # insurance 処理
                     if p.bet_insurance:
                         # insurance が適応される場合
@@ -474,6 +495,7 @@ def main(ws):
                         print(p.name, "s blackjack!")
                         p.income += p.original_bet * 1.5
                         is_player_win = 1
+                        p.is_win.append(result_message_list[is_player_win])
                     else:
                         # バーストしてないか確認
                         for hand_num in range(len(p.hand)):
@@ -484,31 +506,37 @@ def main(ws):
                                     print(p.name, "lose!")
                                     p.income -= p.bet_amount[hand_num]
                                     is_player_win = 3
+                                    p.is_win.append(result_message_list[is_player_win])
                                 elif calc_hand(dealer.hand) == 0 and calc_hand(p.hand[hand_num]) != 0:
                                     # ディーラーのみバーストのとき
                                     print(p.name, "s win!")
                                     p.income += p.bet_amount[hand_num]
                                     is_player_win = 1
+                                    p.is_win.append(result_message_list[is_player_win])
                                 elif calc_hand(dealer.hand) == 0 and calc_hand(p.hand[hand_num]) == 0:
                                     # 両方バーストのとき
                                     print(p.name, "lose!")
                                     p.income -= p.bet_amount[hand_num]
                                     is_player_win = 3
+                                    p.is_win.append(result_message_list[is_player_win])
                             else:
                                 # スコア勝負
                                 if calc_hand(dealer.hand) < calc_hand(p.hand[hand_num]):
                                     print(p.name, "s win! スコア勝負")
                                     p.income += p.bet_amount[hand_num]
                                     is_player_win = 1
+                                    p.is_win.append(result_message_list[is_player_win])
                                 elif calc_hand(dealer.hand) == calc_hand(p.hand[hand_num]):
                                     # 引き分け時
                                     print("push スコア勝負")
                                     p.income += 0
                                     is_player_win = 2
+                                    p.is_win.append(result_message_list[is_player_win])
                                 else:
                                     print(p.name, "lose! スコア勝負")
                                     p.income -= p.bet_amount[hand_num]
                                     is_player_win = 3
+                                    p.is_win.append(result_message_list[is_player_win])
                     if p.bet_insurance:
                         # insurance 失敗
                         p.income -= p.original_bet
@@ -527,13 +555,6 @@ def main(ws):
                 p.income = 0
         # json送信 - 結果の表示
         # is_player_win と表示するメッセージのマッピング
-        result_message_list = {
-            0: "",
-            1: "結果: 勝ち",
-            2: "結果: Push!",
-            3: "結果: 負け",
-            4: "結果: サレンダーしました"
-        }
         print(dealer.hand)
         # json送信
         for p in players:
@@ -542,9 +563,10 @@ def main(ws):
                             player_hand=p.hand,
                             dealer_hand=dealer.hand,
                             is_split_hand=p.split,
-                            pop_message=result_message_list[is_player_win],
+                            pop_message="",
                             player_bankroll=p.bankroll,
-                            active_button=active_button
+                            active_button=active_button,
+                            result_message=p.is_win
             )
         # TODO: 結果を DB に保存
         # 次のゲームを続行するかどうかの入力待ち
