@@ -15,6 +15,12 @@ import random
 import readchar
 import json
 
+import firebase_admin
+from firebase_admin import credentials
+from firebase_admin import firestore
+
+from models.user import User
+
 app = Flask(__name__)
 
 @app.route("/")
@@ -28,7 +34,16 @@ def game():
     if request.method == "GET":
         return redirect("/")
     else:
-        return render_template("game.html", username=request.form["username"])
+        username = request.form["username"]
+        bankroll = 1000
+        user = User(
+            name=username,
+            bankroll=bankroll,
+            registered_at=firestore.SERVER_TIMESTAMP
+        )
+        # username が未登録の場合、新規で登録する
+        # 登録済みの場合、バンクロールを読み取る
+        return render_template("game.html", username=username)
 
 @app.route('/pipe')
 def pipe():
