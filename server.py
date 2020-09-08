@@ -7,7 +7,7 @@ import time
 from gevent.pywsgi import WSGIServer
 from geventwebsocket.handler import WebSocketHandler
 
-from flask import Flask, request, render_template, request, redirect
+from flask import Flask, request, render_template, request, redirect, session
 
 import numpy as np
 import random
@@ -19,9 +19,15 @@ import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import firestore
 
-from models.user import User
+import key
 
 app = Flask(__name__)
+app.secret_key = key.SECRET_KEY
+
+from database.models.user import User
+from database.db import DB
+
+db = DB(json_path="database/blackjack-app-1ab6b-firebase-adminsdk-6iwas-253abd9bd1.json")
 
 @app.route("/")
 def index():
@@ -34,23 +40,26 @@ def game():
     if request.method == "GET":
         return redirect("/")
     else:
-        username = request.form["username"]
-        bankroll = 1000
-        user = User(
-            name=username,
-            bankroll=bankroll,
-            registered_at=firestore.SERVER_TIMESTAMP
-        )
-        # username が未登録の場合、新規で登録する
-        # 登録済みの場合、バンクロールを読み取る
-        return render_template("game.html", username=username)
+        input_username = request.form["username"]
+        input_password = request.form["password"]
+        # user 情報が存在するかのチェック
+        if db.check_user_existance(input_username=input_username, input_password=input_password):
+            # TODO: 存在するとき、情報読み取る
+            user_info_dict = db.get_user_info(input_username=input_username, input_password=input_password)
+            login_username = user_info_dict["name"]
+            session["user_id"] = user_info_dict["user_id"]
+        else:
+            # TODO: 存在しないとき、新規登録
+            login_username = "new_user"
+            session["user_id"] = 100
+        return render_template("game.html", username=login_username)
 
 @app.route('/pipe')
 def pipe():
     if request.environ.get('wsgi.websocket'):
         ws = request.environ['wsgi.websocket']
         while True:
-            main(ws)
+            main(ws=ws)
         ws.close()
     return 200
 
@@ -355,6 +364,9 @@ def main(ws):
     GAME_REPEAT = 2
     deck = Deck(3)
     print("------------------------ GAME START ------------------------")
+    print(session["user_id"])
+    # てすと
+    
     for _ in range(GAME_REPEAT):
         # リスト初期化
         players = []# プレイヤーインスタンスのリスト
