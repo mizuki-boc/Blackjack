@@ -2,8 +2,6 @@ import firebase_admin
 from firebase_admin import credentials
 from firebase_admin import firestore
 
-from database.models.user import User
-
 class DB():
     def __init__(self, json_path):
         cred = credentials.Certificate(json_path)
@@ -14,11 +12,12 @@ class DB():
         docs = self.db.collection('user').where(u"name", u'==', input_username).where(u"password", u"==", input_password).stream()
         for doc in docs:
             d = doc.to_dict()
-            user = User(user_id=d["user_id"],
-                        name=d["name"],
-                        bankroll=d["bankroll"],
-                        registered_at=d["registered_at"])
-        return user.to_dict()
+            user_info = {
+                "document_id": doc.id,
+                "user_id": d["user_id"],
+                "name": d["name"]
+            }
+        return user_info
 
     def check_user_existance(self, input_username, input_password):
         # ユーザーIDを取得できなかったら存在しないと判断する
@@ -32,6 +31,16 @@ class DB():
         else:
             # 入ってないとき
             return False
+
+    def get_bankroll_from_document_id(self, document_id):
+        return self.db.collection(u"user").document(document_id).get().to_dict()["bankroll"]
+
+    def update_bankroll_from_document_id(self, new_bankroll, document_id):
+        new_data = {
+            "bankroll": new_bankroll
+        }
+        self.db.collection("user").document(document_id).update(new_data)
+
 
 # if __name__ == "__main__":
 #     a = DB()

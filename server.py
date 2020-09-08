@@ -27,7 +27,7 @@ app.secret_key = key.SECRET_KEY
 from database.models.user import User
 from database.db import DB
 
-db = DB(json_path="database/blackjack-app-1ab6b-firebase-adminsdk-6iwas-253abd9bd1.json")
+game_db = DB(json_path="database/blackjack-app-1ab6b-firebase-adminsdk-6iwas-253abd9bd1.json")
 
 @app.route("/")
 def index():
@@ -43,11 +43,15 @@ def game():
         input_username = request.form["username"]
         input_password = request.form["password"]
         # user 情報が存在するかのチェック
-        if db.check_user_existance(input_username=input_username, input_password=input_password):
+        if game_db.check_user_existance(input_username=input_username, input_password=input_password):
             # TODO: 存在するとき、情報読み取る
-            user_info_dict = db.get_user_info(input_username=input_username, input_password=input_password)
+            user_info_dict = game_db.get_user_info(input_username=input_username, input_password=input_password)
             login_username = user_info_dict["name"]
-            session["user_id"] = user_info_dict["user_id"]
+            # ドキュメント ID をセッション管理して、ユーザ認証する
+            session["document_id"] = user_info_dict["document_id"]
+            # session["user_id"] = user_info_dict["user_id"]
+            # session["name"] = user_info_dict["name"]
+            # session["password"] = user_info_dict["password"]
         else:
             # TODO: 存在しないとき、新規登録
             login_username = "new_user"
@@ -363,16 +367,14 @@ def main(ws):
 
     GAME_REPEAT = 2
     deck = Deck(3)
+
     print("------------------------ GAME START ------------------------")
-    print(session["user_id"])
-    # てすと
-    
     for _ in range(GAME_REPEAT):
         # リスト初期化
         players = []# プレイヤーインスタンスのリスト
-        # - 各インスタンス生成
-        bankroll = 3000# TODO: ここを DB から読み取る
-        mizuki = Player(name="mizuki", bankroll=bankroll)# ゲームの参加人数に応じて生成。todo
+        # 各インスタンス生成
+        mizuki = Player(name="mizuki",
+                        bankroll=game_db.get_bankroll_from_document_id(session["document_id"]))
         players.append(mizuki)
         # yokosawa = Player("yokosawa")
         # players.append(yokosawa)
@@ -429,8 +431,6 @@ def main(ws):
                 # プレイヤーが natural 21 でないときのみアクション
                 if not p.is_blackjack:
                     # スプリットできるとき
-                    p.hand[0][0] = 101
-                    p.hand[0][1] = 101
                     if p.hand[0][0] % 100 == p.hand[0][1] % 100:
                         print("split? - y/n")
                         # json送信 - message action
@@ -595,7 +595,11 @@ def main(ws):
                             active_button=active_button,
                             result_message=p.is_win
             )
-        # TODO: 結果を DB に保存
+            # TODO: 結果を DB に保存
+            game_db.update_bankroll_from_document_id(
+                new_bankroll=p.bankroll,
+                document_id=session["document_id"]
+            )
         # 次のゲームを続行するかどうかの入力待ち
         receive_action_input(ws, ["to_next_game"])
     # デッキシャッフル
