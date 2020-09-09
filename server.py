@@ -11,9 +11,9 @@ from flask import Flask, request, render_template, request, redirect, session
 
 import numpy as np
 import random
+import hashlib
 
 import readchar
-import json
 
 import firebase_admin
 from firebase_admin import credentials
@@ -24,7 +24,7 @@ import key
 app = Flask(__name__)
 app.secret_key = key.SECRET_KEY
 
-from database.models.user import User
+# from database.models.user import User
 from database.db import DB
 
 game_db = DB(json_path="database/blackjack-app-1ab6b-firebase-adminsdk-6iwas-253abd9bd1.json")
@@ -42,21 +42,38 @@ def game():
     else:
         input_username = request.form["username"]
         input_password = request.form["password"]
+        # input_hashed_password = hash_password(request.form["password"])
         # user 情報が存在するかのチェック
-        if game_db.check_user_existance(input_username=input_username, input_password=input_password):
-            # TODO: 存在するとき、情報読み取る
-            user_info_dict = game_db.get_user_info(input_username=input_username, input_password=input_password)
+        if game_db.check_user_existance(input_username=input_username, input_hashed_password=hash_password(input_password)):
+            # 存在するとき、情報読み取る
+            user_info_dict = game_db.get_user_info(input_username=input_username,
+                                                input_hashed_password=hash_password(input_password))
             login_username = user_info_dict["name"]
             # ドキュメント ID をセッション管理して、ユーザ認証する
             session["document_id"] = user_info_dict["document_id"]
+            session["new_user"] = False
             # session["user_id"] = user_info_dict["user_id"]
             # session["name"] = user_info_dict["name"]
             # session["password"] = user_info_dict["password"]
         else:
             # TODO: 存在しないとき、新規登録
-            login_username = "new_user"
-            session["user_id"] = 100
-        return render_template("game.html", username=login_username)
+            game_db.create_new_user(name=input_username,
+                                    hashed_password=hash_password(input_password))
+            # 登録後、読み込み
+            user_info_dict = game_db.get_user_info(input_username=input_username,
+                                                input_hashed_password=hash_password(input_password))
+            login_username = user_info_dict["name"]
+            # ドキュメント ID をセッション管理して、ユーザ認証する
+            session["document_id"] = user_info_dict["document_id"]
+            session["new_user"] = True
+        new_user_message = "新規登録しました" if session["new_user"] else ""
+        return render_template("game.html", user_name=login_username, new_user_message=new_user_message)
+
+@app.route("/logout")
+def logout():
+    session.pop("document_id", None)
+    session.pop("new_user", None)
+    return redirect("/")
 
 @app.route('/pipe')
 def pipe():
@@ -66,6 +83,11 @@ def pipe():
             main(ws=ws)
         ws.close()
     return 200
+
+def hash_password(password):
+    text = password.encode("utf-8")
+    result = hashlib.sha512(text).hexdigest()
+    return result
 
 def main(ws):
     class Player:

@@ -71,7 +71,7 @@ function exitGame() {
     ret = confirm("ゲームを終了します．よろしいですか？");
     if (ret == true){
         connection.close();
-        location.href = "/";
+        location.href = "/logout";
     }
 }
 

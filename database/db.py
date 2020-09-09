@@ -8,21 +8,31 @@ class DB():
         app = firebase_admin.initialize_app(cred) 
         self.db = firestore.client()
 
-    def get_user_info(self, input_username, input_password):
-        docs = self.db.collection('user').where(u"name", u'==', input_username).where(u"password", u"==", input_password).stream()
+    def create_new_user(self, name, hashed_password, bankroll=1000):
+        '''
+        DB に存在しないことが確認された段階で実行される
+        引数の 
+        '''
+        new_user = User(name=name,
+                        hashed_password=hashed_password,
+                        bankroll=bankroll,
+                        registered_at=firestore.SERVER_TIMESTAMP)
+        self.db.collection("user").add(new_user.to_dict())
+
+    def get_user_info(self, input_username, input_hashed_password):
+        docs = self.db.collection('user').where(u"name", u'==', input_username).where(u"hashed_password", u"==", input_hashed_password).stream()
         for doc in docs:
             d = doc.to_dict()
             user_info = {
                 "document_id": doc.id,
-                "user_id": d["user_id"],
                 "name": d["name"]
             }
         return user_info
 
-    def check_user_existance(self, input_username, input_password):
+    def check_user_existance(self, input_username, input_hashed_password):
         # ユーザーIDを取得できなかったら存在しないと判断する
         uid = []
-        docs = self.db.collection('user').where(u"name", u'==', input_username).where(u"password", u"==", input_password).stream()
+        docs = self.db.collection('user').where(u"name", u'==', input_username).where(u"hashed_password", u"==", input_hashed_password).stream()
         for doc in docs:
             uid.append(doc.id)
         if uid:
@@ -40,6 +50,44 @@ class DB():
             "bankroll": new_bankroll
         }
         self.db.collection("user").document(document_id).update(new_data)
+    
+class User(object):
+    def __init__(self, name, hashed_password, bankroll, registered_at):
+        # self.user_id = user_id
+        self.name = name
+        self.hashed_password = hashed_password
+        self.bankroll = bankroll
+        self.registered_at = registered_at
+
+    @staticmethod
+    def from_dict(source):
+        # [START_EXCLUDE]
+        user = User(name=source[u"name"],
+                    hashed_password=source["hashed_password"],
+                    bankroll=source[u"bankroll"],
+                    registered_at=source[u"registered_at"])
+
+        # 任意で。あるならデフォルト引数を指定する
+        # if u"capital" in source:
+        #     city.capital = source[u"capital"]
+
+        return user
+        # [END_EXCLUDE]
+
+    def to_dict(self):
+        # [START_EXCLUDE]
+        dest = {
+            u"name": self.name,
+            u"hashed_password": self.hashed_password,
+            u"bankroll": self.bankroll,
+            u"registered_at": self.registered_at
+        }
+
+        # 任意で。デフォルト引数を指定する
+        # if self.capital:
+        #     dest[u"capital"] = self.capital
+
+        return dest
 
 
 # if __name__ == "__main__":
