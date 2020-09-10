@@ -632,10 +632,12 @@ if __name__ == "__main__":
     host = 'localhost'
     port = 8888
 
-    host_port = (host, port)
-    server = WSGIServer(
-        host_port,
-        app,
-        handler_class=WebSocketHandler
-    )
-    server.serve_forever()
+    app.run(host="localhost", port=8888)
+
+    # host_port = (host, port)
+    # server = WSGIServer(
+    #     host_port,
+    #     app,
+    #     handler_class=WebSocketHandler
+    # )
+    # server.serve_forever()
